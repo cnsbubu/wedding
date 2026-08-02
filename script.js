@@ -302,6 +302,14 @@
 const PREVIEW_COUNT = 12;
 let expanded = false;
 
+function getThumbnailUrl(src) {
+    if (!src) return src;
+    if (src.includes('images/gallery/')) {
+        return src.replace('images/gallery/', 'images/gallery/thumb/');
+    }
+    return src;
+}
+
 function initGallery(galleryImages) {
 
     const grid = $("#galleryGrid");
@@ -324,7 +332,7 @@ function initGallery(galleryImages) {
             item.dataset.index = index;
 
             const img = document.createElement("img");
-            img.src = src;
+            img.src = getThumbnailUrl(src);
             img.loading = "lazy";
 
             item.append(img);
