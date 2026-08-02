@@ -234,8 +234,9 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3.5rem 2.5rem;
-  touch-action: pan-y;
+  padding: 3.5rem 1.5rem;
+  overflow: hidden;
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -244,7 +245,17 @@ a {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+  transform-origin: center center;
+  will-change: transform;
+  transition: transform 0.15s ease-out;
+  cursor: grab;
 }
+
+.photo-modal__img.is-dragging {
+  transition: none !important;
+  cursor: grabbing;
+}
+
 
 .photo-modal__counter {
   position: absolute;
@@ -254,6 +265,7 @@ a {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.8125rem;
   letter-spacing: 2px;
+  pointer-events: none;
 }
 
 /* ═══════════════════════════════════════════
@@ -550,19 +562,6 @@ a {
   letter-spacing: 0.5px;
 }
 
-.photo-modal--map .photo-modal__container {
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 0;
-  overflow: auto;
-  touch-action: pan-x pan-y;
-}
-
-.photo-modal--map .photo-modal__img {
-  width: 900px;
-  max-width: none;
-  max-height: none;
-}
 
 .location__links {
   display: flex;
