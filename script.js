@@ -36,40 +36,6 @@
      Image Auto-Detection
      ═══════════════════════════════════════════ */
 
-  async function loadImagesFromFolder(folder, maxAttempts = 100) {
-    const images = [];
-    let consecutiveFails = 0;
-
-    for (let number = 1; number <= maxAttempts && consecutiveFails < 3; number++) {
-      const path = `images/${folder}/${number}.jpg`;
-
-      try {
-        const response = await fetch(path, { method: 'HEAD' });
-        if (!response.ok) {
-          consecutiveFails++;
-          continue;
-        }
-      } catch {
-        // file:// 미리보기처럼 HEAD 요청을 지원하지 않는 환경에서는 이미지 로드로 확인합니다.
-        const exists = await new Promise((resolve) => {
-          const image = new Image();
-          image.onload = () => resolve(true);
-          image.onerror = () => resolve(false);
-          image.src = path;
-        });
-        if (!exists) {
-          consecutiveFails++;
-          continue;
-        }
-      }
-
-      images.push({ full: path, thumbnail: path });
-      consecutiveFails = 0;
-    }
-
-    return images;
-  }
-
   /* ═══════════════════════════════════════════
      Toast
      ═══════════════════════════════════════════ */
@@ -120,7 +86,7 @@
     };
     setMeta('property', 'og:title', m.title);
     setMeta('property', 'og:description', m.description);
-    setMeta('property', 'og:image', 'images/og/1.jpg');
+    setMeta('property', 'og:image', CONFIG.images.og);
     setMeta('name', 'description', m.description);
   }
 
@@ -156,7 +122,7 @@
 
   function initHero() {
     const heroPhoto = $('#heroPhoto');
-    heroPhoto.src = 'images/hero/1.jpg';
+    heroPhoto.src = CONFIG.images.hero;
     heroPhoto.fetchPriority = 'high';
     $('#heroNames').textContent = `${CONFIG.groom.name}  ·  ${CONFIG.bride.name}`;
     $('#heroDate').textContent = formatDate(CONFIG.wedding.date, CONFIG.wedding.time);
@@ -333,22 +299,79 @@
      Gallery Section
      ═══════════════════════════════════════════ */
 
-  function initGallery(galleryImages) {
-    const grid = $('#galleryGrid');
-    grid.replaceChildren();
+const PREVIEW_COUNT = 12;
+let expanded = false;
 
-    if (galleryImages.length === 0) {
-      const gallerySection = $('#gallery');
-      if (gallerySection) gallerySection.style.display = 'none';
-      return;
+function initGallery(galleryImages) {
+
+    const grid = $("#galleryGrid");
+    const moreBtn = $("#galleryMoreBtn");
+
+    function renderGallery() {
+
+        grid.innerHTML = "";
+
+        const images = expanded
+            ? galleryImages
+            : galleryImages.slice(0, PREVIEW_COUNT);
+
+        const fragment = document.createDocumentFragment();
+
+        images.forEach((src, index) => {
+
+            const item = document.createElement("div");
+            item.className = "gallery__item animate-item";
+            item.dataset.index = index;
+
+            const img = document.createElement("img");
+            img.src = src;
+            img.loading = "lazy";
+
+            item.append(img);
+
+            if (scrollObserver) {
+                scrollObserver.observe(item);
+            }
+
+            fragment.append(item);
+
+        });
+
+        grid.append(fragment);
+
+        observeAnimationItems($$(".gallery__item"));
     }
 
-    galleryImages.forEach((image, i) => {
-      const div = createPhotoItem(image, 'gallery__item', `갤러리 사진 ${i + 1}`);
-      div.addEventListener('click', () => openPhotoModal(galleryImages, i));
-      grid.appendChild(div);
+    renderGallery();
+
+    grid.addEventListener("click", (e) => {
+
+        const item = e.target.closest(".gallery__item");
+        if (!item) return;
+
+        openPhotoModal(
+            galleryImages,
+            Number(item.dataset.index)
+        );
+
     });
-  }
+
+    if (galleryImages.length <= PREVIEW_COUNT) {
+        moreBtn.style.display = "none";
+        return;
+    }
+
+    moreBtn.addEventListener("click", () => {
+
+        expanded = true;
+
+        renderGallery();
+
+        moreBtn.remove();
+
+    });
+
+}
 
   function createPhotoItem(image, className, alt) {
     const item = document.createElement('div');
@@ -356,7 +379,7 @@
     item.dataset.animate = 'fade-up';
 
     const img = document.createElement('img');
-    img.src = image.thumbnail;
+    img.src = image;
     img.alt = alt;
     img.loading = 'lazy';
     img.decoding = 'async';
@@ -374,8 +397,15 @@
   let touchEndX = 0;
   let touchStartY = 0;
   let touchEndY = 0;
+  let scrollY = 0;
 
   function openPhotoModal(images, index, isMap = false) {
+    scrollY = window.scrollY;
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+
     modalImages = images;
     modalIndex = index;
     showModalImage();
@@ -384,17 +414,36 @@
     document.body.classList.add('no-scroll');
   }
 
-  function closePhotoModal() {
+function closePhotoModal() {
+
     $('#photoModal').classList.remove('is-open', 'photo-modal--map');
     document.body.classList.remove('no-scroll');
-  }
+
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.width = "";
+
+    requestAnimationFrame(() => {
+        window.scrollTo({
+            top: scrollY,
+            behavior: "instant"
+        });
+    });
+
+}
 
   function showModalImage() {
     const img = $('#modalImg');
-    img.src = modalImages[modalIndex].full;
+    img.src = modalImages[modalIndex];
     $('#modalCounter').textContent = `${modalIndex + 1} / ${modalImages.length}`;
     $('#modalPrev').style.display = modalIndex > 0 ? '' : 'none';
     $('#modalNext').style.display = modalIndex < modalImages.length - 1 ? '' : 'none';
+const next = modalIndex + 1;
+
+if (next < modalImages.length) {
+    const preload = new Image();
+    preload.src = modalImages[next];
+}
   }
 
   function modalNavigate(dir) {
@@ -460,12 +509,11 @@
 
   function initLocation() {
     const w = CONFIG.wedding;
-    const mapImage = 'images/location/1.jpg';
     $('#locationVenue').textContent = w.venue;
     $('#locationHall').textContent = w.hall;
     $('#locationAddress').textContent = w.address;
     $('#locationTel').textContent = w.tel ? `Tel. ${w.tel}` : '';
-    $('#locationMapImg').src = mapImage;
+    $('#locationMapImg').src = CONFIG.images.location;
     $('#kakaoMapBtn').href = w.mapLinks.kakao || '#';
     $('#naverMapBtn').href = w.mapLinks.naver || '#';
 
@@ -474,7 +522,7 @@
     });
 
     $('#locationMapBtn').addEventListener('click', () => {
-      openPhotoModal([{ full: mapImage }], 0, true);
+      openPhotoModal([CONFIG.images.location], 0, true);
     });
   }
 
@@ -613,8 +661,7 @@
     initFooter();
     initScrollAnimations();
 
-    const galleryImages = await loadImagesFromFolder('gallery');
-    initGallery(galleryImages);
+    initGallery(CONFIG.images.gallery);
     observeAnimationItems($$('.gallery__item'));
   }
 

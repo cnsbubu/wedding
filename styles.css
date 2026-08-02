@@ -60,8 +60,6 @@ body {
 
 body.no-scroll {
   overflow: hidden;
-  position: fixed;
-  width: 100%;
 }
 
 img {
@@ -472,6 +470,11 @@ a {
 
 .gallery__item:hover img {
   opacity: 0.9;
+}
+
+#galleryMoreBtn {
+    display: block;
+    margin: 24px auto 0;
 }
 
 /* ═══════════════════════════════════════════
